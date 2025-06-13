@@ -9,7 +9,7 @@ class IsAdminOrReadOnly(BasePermission):
     Остальные пользователи имеют доступ только для чтения.
     """
 
-    def has_permission(self, request, view):
+    def has_object_permission(self, request, view):
         return (
             request.method in SAFE_METHODS
             or request.user.is_authenticated

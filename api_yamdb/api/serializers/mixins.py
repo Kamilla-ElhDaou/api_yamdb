@@ -40,3 +40,19 @@ class TitleGenreSerializer:
         if genres is not None:
             instance.genre.set(genres)
         return instance
+
+
+class ScoreValidationMixin:
+    """
+    Миксин для валидации оценки.
+
+    Проверяет, что оценка - целое число от 1 до 10.
+    """
+
+    def validate_score(self, value):
+        """
+        Проверяет, что score в диапазоне от 1 до 10.
+        """
+        if not (1 <= value <= 10):
+            raise serializers.ValidationError("Оценка должна быть целым числом от 1 до 10")
+        return value
