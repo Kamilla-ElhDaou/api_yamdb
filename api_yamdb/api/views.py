@@ -52,7 +52,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     для чтения и записи. Доступ: поиск, фильтрация, сортировка
     """
 
-    queryset = Title.objects.all()
+    queryset = Title.objects.all().select_related('category').prefetch_related('genre')
     filter_backends = [
         DjangoFilterBackend, 
         filters.OrderingFilter, 
