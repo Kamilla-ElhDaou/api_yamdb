@@ -1,9 +1,14 @@
-from api.mixins import CreateListDestroyViewSet
-from api.permissions import IsAdminOrReadOnly
-from api.serializers import (CategorySerializer, GenreSerializer,
-                             TitleCreateUpdateSerializer, TitleSerializer)
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, viewsets
+
+from api.mixins import CreateListDestroyViewSet
+from api.permissions import IsAdminOrReadOnly
+from api.serializers import (
+    CategorySerializer, 
+    GenreSerializer,
+    TitleReadSerializer,
+    TitleWriteSerializer
+)
 from reviews.models import Category, Genre, Title
 
 
@@ -18,7 +23,7 @@ class CategoryViewSet(CreateListDestroyViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = (IsAdminOrReadOnly,)
-    filter_backends = (filters.SearchFilter)
+    filter_backends = (filters.SearchFilter,)
     filterset_fields = ('name', 'slug')
     search_fields = ('name',)
     lookup_field = 'slug'
@@ -34,7 +39,7 @@ class GenreViewSet(CreateListDestroyViewSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     permission_classes = (IsAdminOrReadOnly,)
-    filter_backends = (filters.SearchFilter)
+    filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
     lookup_field = 'slug'
 
@@ -46,6 +51,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     Полный CRUD с разными сериализаторами
     для чтения и записи. Доступ: поиск, фильтрация, сортировка
     """
+
     queryset = Title.objects.all()
     filter_backends = [
         DjangoFilterBackend, 
@@ -58,10 +64,10 @@ class TitleViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         """
-        Возвращает соответствующий сериализатор: 
-        - list и retrieve: сериализатор для чтения (вложенные жанры и категории)
-        - остальные операции: сериализатор для записи по слагу.
+        Возвращает сериализатор для операций чтения (list, retrieve)
+        или для создания/обновления
         """
+
         if self.action in ['list', 'retrieve']:
-            return TitleSerializer
-        return TitleCreateUpdateSerializer
+            return TitleReadSerializer
+        return TitleWriteSerializer

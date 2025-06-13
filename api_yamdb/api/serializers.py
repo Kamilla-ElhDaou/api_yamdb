@@ -1,14 +1,12 @@
 from rest_framework import serializers
+
 from reviews.models import Category, Genre, Title
+from .mixins import TitleGenreSerializer, YearValidationMixin
 
 
 class CategorySerializer(serializers.ModelSerializer):
     """
-    Сеrializer для модели Category.
-
-    Поля:
-        name - название категории
-        slug - уникальный слаг категории
+    Sеrializer для модели Category.
     """
 
     class Meta:
@@ -18,11 +16,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class GenreSerializer(serializers.ModelSerializer):
     """
-    Сеrializer для модели Genre.
-
-    Поля:
-        name - название жанра
-        slug - уникальный слаг жанра
+    Sеrializer для модели Genre.
     """
 
     class Meta:
@@ -30,14 +24,11 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = ('name', 'slug')
 
 
-class TitleSerializer(serializers.ModelSerializer):
+class TitleReadSerializer(serializers.ModelSerializer):
     """
-    Сеrializer для модели Title.
+    Serializer для чтения Title.
 
-    Поля:
-        genre - вложенный сеrializer Genre(many=True, read_only=True)
-        category - вложенный сеrializer Category
-        остальные поля модели Title
+    Возвращает вложенные жанры и категорию.
     """
 
     genre = GenreSerializer(many=True, read_only=True)
@@ -47,14 +38,15 @@ class TitleSerializer(serializers.ModelSerializer):
         model = Title
         fields = '__all__'
 
-class TitleCreateUpdateSerializer(serializers.ModelSerializer):
+class TitleWriteSerializer(
+    TitleGenreSerializer, 
+    YearValidationMixin,
+    serializers.ModelSerializer
+):
     """
-    Serializer для создания и обновления модели Title.
+    Serializer для создания и обновления Title.
 
-    Поля:
-        genre: Список слагов жанров (SlugRelatedField).
-        category: Слаг категории (SlugRelatedField).
-        остальные поля модели Title.
+    Использует SlugRelatedField для вложенных жанров и категории.
     """
 
     genre = serializers.SlugRelatedField(
