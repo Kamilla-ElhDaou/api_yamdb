@@ -1,9 +1,30 @@
 from django.contrib import admin
 
-from .models import Comment, Review
+from .models import Category, Comment, Genre, Review, Title
 
 
 admin.site.empty_value_display = '-пусто-'
+
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'slug')
+    search_fields = ('name', 'slug')
+    ordering = ('name',)
+
+
+@admin.register(Genre)
+class GenreAdmin(admin.ModelAdmin):
+    list_display = ('name', 'slug')
+    search_fields = ('name', 'slug')
+    ordering = ('name',)
+
+
+@admin.register(Title)
+class TitleAdmin(admin.ModelAdmin):
+    list_display = ('name', 'year', 'category')
+    list_filter = ('year', 'category', 'genre')
+    search_fields = ('name', 'description')
+    ordering = ('name',)
 
 
 @admin.register(Comment)
