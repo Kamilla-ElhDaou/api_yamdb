@@ -1,9 +1,10 @@
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, viewsets
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
-from api.mixins import CreateListDestroyViewSet
+from api.mixins import CreateListDestroyViewSet, NoPutRequestMixin
 from api.permissions import IsAdminOrReadOnly, IsAuthorOrStaff
 from api.serializers import (
     CategorySerializer,
@@ -75,21 +76,14 @@ class TitleViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return TitleReadSerializer
         return TitleWriteSerializer
-=======
-from django.shortcuts import get_object_or_404
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
-
-from .permissions import IsAuthorOrStaff
-from .serializers import ReviewSerializer, CommentSerializer
-from reviews.models import Review, Title
 
 
-class ReviewViewSet(viewsets.ModelViewSet):
-    """API эндпоинт для работы с отзывами."""
+class ReviewViewSet(NoPutRequestMixin, viewsets.ModelViewSet):
+    """ViewSet для работы с отзывами."""
 
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrStaff]
+    permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrStaff,)
+    pagination_class = LimitOffsetPagination
 
     def get_title(self):
         """Получает произведение по id из URL или возвращает 404."""
@@ -98,7 +92,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Возвращает queryset отзывов для конкретного произведения."""
         title = self.get_title()
-        return title.reviews.all()
+        return title.reviews.select_related('author').all()
 
     def perform_create(self, serializer):
         """Создает новый отзыв с привязкой к произведению и автору."""
@@ -106,11 +100,12 @@ class ReviewViewSet(viewsets.ModelViewSet):
         serializer.save(author=self.request.user, title=title)
 
 
-class CommentViewSet(viewsets.ModelViewSet):
-    """API эндпоинт для работы с комментариями."""
+class CommentViewSet(NoPutRequestMixin, viewsets.ModelViewSet):
+    """ViewSet для работы с комментариями."""
 
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrStaff]
+    permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrStaff,)
+    pagination_class = LimitOffsetPagination
 
     def get_review(self):
         """Получает отзыв по id и произведени из URL или возвращает 404."""
@@ -123,7 +118,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Возвращает queryset комментариев для конкретного отзыва."""
         review = self.get_review()
-        return review.comments.all()
+        return review.comments.select_related('author').all()
 
     def perform_create(self, serializer):
         """Создает новый комментарий с привязкой к отзыву и автору."""
