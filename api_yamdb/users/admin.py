@@ -8,14 +8,33 @@ User = get_user_model()
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
     list_display = (
-        'username', 'email', 'first_name',
-        'last_name', 'bio', 'role'
+        'username',
+        'email',
+        'first_name',
+        'last_name',
+        'bio',
+        'role'
     )
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
-        ('Personal info', {'fields': (
-            'first_name', 'last_name', 'email', 'bio', 'role'
-        )}),
-        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser')}),
-        ('Important dates', {'fields': ('last_login', 'date_joined')}),
+        (
+            'Personal info',
+            {
+                'fields': (
+                    'first_name',
+                    'last_name',
+                    'email',
+                    'bio',
+                    'role'
+                )
+            }
+        ),
+        (
+            'Permissions',
+            {'fields': ('is_active', 'is_staff', 'is_superuser')}
+        ),
+        (
+            'Important dates',
+            {'fields': ('last_login', 'date_joined')}
+        ),
     )

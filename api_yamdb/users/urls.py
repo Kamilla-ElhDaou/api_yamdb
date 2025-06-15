@@ -1,11 +1,14 @@
 from django.urls import path
 from .views import (
-    user_me, 
-    user_list, 
+    user_me,
+    user_list,
     user_detail,
-    get_token, 
-    signup
+    get_token,
+    signup,
 )
+
+
+app_name = 'users'
 
 urlpatterns = [
     path('v1/auth/signup/', signup, name='signup'),

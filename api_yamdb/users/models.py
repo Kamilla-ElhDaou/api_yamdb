@@ -4,7 +4,9 @@ from django.core.mail import send_mail
 from django.conf import settings
 import uuid
 
+
 class User(AbstractUser):
+    """Кастомная модель пользователя с расширенными полями."""
     USER = 'user'
     MODERATOR = 'moderator'
     ADMIN = 'admin'
@@ -24,15 +26,22 @@ class User(AbstractUser):
     )
     confirmation_code = models.CharField(max_length=100, blank=True)
 
+    def __str__(self):
+        """Строковое представление пользователя."""
+        return f'{self.username} ({self.email})'
+
     @property
     def is_admin(self):
+        """Проверяет, является ли пользователь администратором."""
         return self.role == self.ADMIN or self.is_superuser
 
     @property
     def is_moderator(self):
+        """Проверяет, является ли пользователь модератором."""
         return self.role == self.MODERATOR
 
     def send_confirmation_email(self):
+        """Отправляет email с кодом подтверждения."""
         self.confirmation_code = str(uuid.uuid4())
         self.save()
         send_mail(
