@@ -4,6 +4,9 @@ from rest_framework import filters, viewsets
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
+from rest_framework import status
+from rest_framework.response import Response
+
 from api.mixins import CreateListDestroyViewSet, NoPutRequestMixin
 from api.permissions import IsAdminOrReadOnly, IsAuthorOrStaff
 from api.serializers import (
@@ -66,6 +69,8 @@ class TitleViewSet(viewsets.ModelViewSet):
     filterset_fields = ['category', 'genre', 'year']
     ordering_fields = ['name', 'year']
     search_fields = ['name']
+    permission_classes = (IsAdminOrReadOnly,)
+    pagination_class = LimitOffsetPagination
 
     def get_serializer_class(self):
         """
@@ -76,6 +81,25 @@ class TitleViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return TitleReadSerializer
         return TitleWriteSerializer
+
+    def update(self, request, *args, **kwargs):
+        if request.method == 'PUT':
+            return Response(
+                {'detail': ' PUT-запрос не предусмотрен.'},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED
+            )
+        return super().update(request, *args, **kwargs)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 class ReviewViewSet(NoPutRequestMixin, viewsets.ModelViewSet):
