@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from users.constants import FORBIDDEN_NAMES
+
 
 User = get_user_model()
 
@@ -44,22 +46,22 @@ class SignUpSerializer(serializers.Serializer):
             existing_user = User.objects.get(username=username)
             if existing_user.email != email:
                 raise serializers.ValidationError(
-                    {'email': 'Пользователь с таким именем уже существует'}
+                    {'username': 'Пользователь с таким именем уже существует'}
                 )
 
         if email_exists:
             existing_user = User.objects.get(email=email)
             if existing_user.username != username:
                 raise serializers.ValidationError(
-                    {'username': 'Пользователь с таким email уже существует'}
+                    {'email': 'Пользователь с таким email уже существует'}
                 )
 
         return data
 
     def validate_username(self, data):
-        """Проверяте, что имя пользователя не является 'me'"""
-        if data.lower() == 'me':
+        """Проверяте, что имя пользователя не запрещенно."""
+        if data.lower() in FORBIDDEN_NAMES:
             raise serializers.ValidationError(
-                'Имя пользователя не может быть "me"'
+                f'Имя пользователя не может быть {data}'
             )
         return data

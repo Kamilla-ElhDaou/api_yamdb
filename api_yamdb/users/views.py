@@ -72,7 +72,7 @@ class UserViewSet(NoPutRequestMixin, viewsets.ModelViewSet):
     """Вьюсет для работы с пользователями."""
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated, IsAdmin]
+    permission_classes = (IsAuthenticated, IsAdmin,)
     lookup_field = 'username'
     filter_backends = (SearchFilter,)
     search_fields = ('username',)
@@ -80,7 +80,7 @@ class UserViewSet(NoPutRequestMixin, viewsets.ModelViewSet):
     @action(
         detail=False,
         methods=['get', 'patch'],
-        permission_classes=[IsAuthenticated]
+        permission_classes=(IsAuthenticated,)
     )
     def me(self, request):
         """Получить или изменить данные своей учетной записи"""

@@ -21,7 +21,7 @@ class CustomUserAdmin(UserAdmin):
     list_filter = (
         'role',
         'is_staff',
-        'is_active'
+        'is_active',
         'date_joined'
     )
     search_fields = (
