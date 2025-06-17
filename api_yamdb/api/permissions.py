@@ -30,4 +30,3 @@ class IsAuthorOrStaff(BasePermission):
             or request.user.role == 'moderator'
             or request.user.role == 'admin'
         )
-

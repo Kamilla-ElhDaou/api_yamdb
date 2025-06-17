@@ -5,12 +5,10 @@ from reviews.models import Title
 
 
 class YearValidationMixin:
+    """Миксин для валидации года."""
 
     def validate_year(self, value):
-        """
-        Проверка, что год не больше текущего
-        """
-
+        """Проверка, что год не больше текущего."""
         current_year = datetime.now().year
         if value > current_year:
             raise serializers.ValidationError(
@@ -27,12 +25,22 @@ class TitleGenreSerializer:
     """
 
     def create(self, validated_data):
+        """
+        Создаёт объект Title с указанными.
+
+        данными и связывает его с жанрами.
+        """
         genres = validated_data.pop('genre')
         title = Title.objects.create(**validated_data)
         title.genre.set(genres)
         return title
 
     def update(self, instance, validated_data):
+        """
+        Обновляет объект Title с новыми данными.
+
+        и при необходимости обновляет связанные жанры.
+        """
         genres = validated_data.pop('genre', None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -50,9 +58,9 @@ class ScoreValidationMixin:
     """
 
     def validate_score(self, value):
-        """
-        Проверяет, что score в диапазоне от 1 до 10.
-        """
+        """Проверяет, что score в диапазоне от 1 до 10."""
         if not (1 <= value <= 10):
-            raise serializers.ValidationError("Оценка должна быть целым числом от 1 до 10")
+            raise serializers.ValidationError(
+                "Оценка должна быть целым числом от 1 до 10"
+            )
         return value

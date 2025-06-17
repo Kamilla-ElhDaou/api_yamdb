@@ -60,10 +60,14 @@ class TitleViewSet(viewsets.ModelViewSet):
     для чтения и записи. Доступ: поиск, фильтрация, сортировка
     """
 
-    queryset = Title.objects.all().select_related('category').prefetch_related('genre')
+    queryset = (
+        Title.objects.all()
+        .select_related('category')
+        .prefetch_related('genre')
+    )
     filter_backends = [
-        DjangoFilterBackend, 
-        filters.OrderingFilter, 
+        DjangoFilterBackend,
+        filters.OrderingFilter,
         filters.SearchFilter
     ]
     filterset_fields = ['category', 'genre', 'year']
@@ -74,15 +78,16 @@ class TitleViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         """
-        Возвращает сериализатор для операций чтения (list, retrieve)
-        или для создания/обновления
-        """
+        Возвращает сериализатор для операций чтения (list, retrieve).
 
+        или для создания/обновления.
+        """
         if self.action in ['list', 'retrieve']:
             return TitleReadSerializer
         return TitleWriteSerializer
 
     def update(self, request, *args, **kwargs):
+        """Обрабатывает запросы обнвовлений объекта, запрещает PUT-запросы."""
         if request.method == 'PUT':
             return Response(
                 {'detail': ' PUT-запрос не предусмотрен.'},
@@ -91,6 +96,7 @@ class TitleViewSet(viewsets.ModelViewSet):
         return super().update(request, *args, **kwargs)
 
     def list(self, request, *args, **kwargs):
+        """Возвращает список объектов с поддержкой пагинации."""
         queryset = self.filter_queryset(self.get_queryset())
 
         page = self.paginate_queryset(queryset)

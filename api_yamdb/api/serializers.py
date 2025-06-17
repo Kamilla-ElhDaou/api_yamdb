@@ -5,9 +5,7 @@ from reviews.models import Category, Comment, Genre, Review, Title
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    """
-    Sеrializer для модели Category.
-    """
+    """Sеrializer для модели Category."""
 
     class Meta:
         model = Category
@@ -15,9 +13,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class GenreSerializer(serializers.ModelSerializer):
-    """
-    Sеrializer для модели Genre.
-    """
+    """Sеrializer для модели Genre."""
 
     class Meta:
         model = Genre
@@ -38,8 +34,9 @@ class TitleReadSerializer(serializers.ModelSerializer):
         model = Title
         fields = '__all__'
 
+
 class TitleWriteSerializer(
-    TitleGenreSerializer, 
+    TitleGenreSerializer,
     YearValidationMixin,
     serializers.ModelSerializer
 ):
@@ -50,7 +47,7 @@ class TitleWriteSerializer(
     """
 
     genre = serializers.SlugRelatedField(
-        many=True, 
+        many=True,
         slug_field='slug',
         queryset=Genre.objects.all()
     )
@@ -90,6 +87,12 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'pub_date',)
 
     def validate(self, data):
+        """
+        Проверяет, что пользователь не оставляет более одного отзыва.
+
+        Если запрос POST, возвращает data.
+        Если отзыв уже существует, возвращает ошибку.
+        """
         if self.context['request'].method != 'POST':
             return data
 
@@ -102,6 +105,11 @@ class ReviewSerializer(serializers.ModelSerializer):
         return data
 
     def validate_score(self, data):
+        """
+        Проверяет , что score в диапазоне от 1 до 10 вкл.
+
+        Если значение выходит за диапазон, возвращает ошибку.
+        """
         if not 1 <= data <= 10:
             raise serializers.ValidationError('Оценка должна быть от 1 до 10')
         return data
