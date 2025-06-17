@@ -1,115 +1,20 @@
+import django_filters
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, viewsets
+from rest_framework import filters, mixins, viewsets
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import SAFE_METHODS, IsAuthenticatedOrReadOnly
 
-from rest_framework import status
-from rest_framework.response import Response
-
-from api.mixins import CreateListDestroyViewSet, NoPutRequestMixin
+from api.mixins import NoPutRequestMixin, TitleFilter
 from api.permissions import IsAdminOrReadOnly, IsAuthorOrStaff
-from api.serializers import (
-    CategorySerializer,
-    CommentSerializer,
-    GenreSerializer,
-    ReviewSerializer,
-    TitleReadSerializer,
-    TitleWriteSerializer
-)
+from api.serializers import (CategorySerializer, CommentSerializer,
+                             GenreSerializer, ReviewSerializer,
+                             TitleReadSerializer, TitleWriteSerializer)
 from reviews.models import Category, Genre, Review, Title
 
 
-class CategoryViewSet(CreateListDestroyViewSet):
-    """
-    Вьюсет категорий произведений.
-
-    Позволяет админам создавать, удалять и просматривать категории.
-    Остальным пользователям доступен только просмотр.
-    """
-
-    queryset = Category.objects.all()
-    serializer_class = CategorySerializer
-    permission_classes = (IsAdminOrReadOnly,)
-    filter_backends = (filters.SearchFilter,)
-    filterset_fields = ('name', 'slug')
-    search_fields = ('name',)
-    lookup_field = 'slug'
-
-
-class GenreViewSet(CreateListDestroyViewSet):
-    """
-    Вьюсет жанров произведений.
-
-    Поведение аналогично CategoryViewSet
-    """
-
-    queryset = Genre.objects.all()
-    serializer_class = GenreSerializer
-    permission_classes = (IsAdminOrReadOnly,)
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
-    lookup_field = 'slug'
-
-
-class TitleViewSet(viewsets.ModelViewSet):
-    """
-    Вьюсет произведений.
-
-    Полный CRUD с разными сериализаторами
-    для чтения и записи. Доступ: поиск, фильтрация, сортировка
-    """
-
-    queryset = (
-        Title.objects.all()
-        .select_related('category')
-        .prefetch_related('genre')
-    )
-    filter_backends = [
-        DjangoFilterBackend,
-        filters.OrderingFilter,
-        filters.SearchFilter
-    ]
-    filterset_fields = ['category', 'genre', 'year']
-    ordering_fields = ['name', 'year']
-    search_fields = ['name']
-    permission_classes = (IsAdminOrReadOnly,)
-    pagination_class = LimitOffsetPagination
-
-    def get_serializer_class(self):
-        """
-        Возвращает сериализатор для операций чтения (list, retrieve).
-
-        или для создания/обновления.
-        """
-        if self.action in ['list', 'retrieve']:
-            return TitleReadSerializer
-        return TitleWriteSerializer
-
-    def update(self, request, *args, **kwargs):
-        """Обрабатывает запросы обнвовлений объекта, запрещает PUT-запросы."""
-        if request.method == 'PUT':
-            return Response(
-                {'detail': ' PUT-запрос не предусмотрен.'},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
-            )
-        return super().update(request, *args, **kwargs)
-
-    def list(self, request, *args, **kwargs):
-        """Возвращает список объектов с поддержкой пагинации."""
-        queryset = self.filter_queryset(self.get_queryset())
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-
 class ReviewViewSet(NoPutRequestMixin, viewsets.ModelViewSet):
-    """ViewSet для работы с отзывами."""
+    """Вьюсет для работы с отзывами."""
 
     serializer_class = ReviewSerializer
     permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrStaff,)
@@ -131,7 +36,7 @@ class ReviewViewSet(NoPutRequestMixin, viewsets.ModelViewSet):
 
 
 class CommentViewSet(NoPutRequestMixin, viewsets.ModelViewSet):
-    """ViewSet для работы с комментариями."""
+    """Вьюсет для работы с комментариями."""
 
     serializer_class = CommentSerializer
     permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrStaff,)
@@ -154,3 +59,53 @@ class CommentViewSet(NoPutRequestMixin, viewsets.ModelViewSet):
         """Создает новый комментарий с привязкой к отзыву и автору."""
         review = self.get_review()
         serializer.save(author=self.request.user, review=review)
+
+
+class CategoryGenreBaseViewSet(mixins.CreateModelMixin,
+                               mixins.DestroyModelMixin,
+                               mixins.ListModelMixin,
+                               viewsets.GenericViewSet,
+                               NoPutRequestMixin):
+    """Базовый Вьюсет для категорий и жанров."""
+
+    permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
+    pagination_class = LimitOffsetPagination
+
+
+class CategoryViewSet(CategoryGenreBaseViewSet):
+    """Вьюсет для работы с категориями произведений."""
+
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+
+class GenreViewSet(CategoryGenreBaseViewSet):
+    """Вьюсет для работы с жанрами произведений."""
+    queryset = Genre.objects.all()
+    serializer_class = GenreSerializer
+
+
+class TitleViewSet(NoPutRequestMixin, viewsets.ModelViewSet):
+    """Вьюсет для работы с произведениями."""
+
+    queryset = Title.objects.all()
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.OrderingFilter,
+        filters.SearchFilter
+    ]
+    filterset_class = TitleFilter
+    ordering_fields = ['name', 'year']
+    search_fields = ['name', 'genre__name']
+    pagination_class = LimitOffsetPagination
+    permission_classes = (IsAdminOrReadOnly,)
+
+    def get_serializer_class(self):
+        """Возвращает нужный сериализатор в зависимости от метода."""
+
+        if self.request.method in SAFE_METHODS:
+            return TitleReadSerializer
+        return TitleWriteSerializer

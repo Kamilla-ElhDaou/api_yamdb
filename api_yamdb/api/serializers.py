@@ -1,64 +1,9 @@
+from datetime import datetime
+
+from django.db.models import Avg
 from rest_framework import serializers
 
-from .mixins import TitleGenreSerializer, YearValidationMixin
 from reviews.models import Category, Comment, Genre, Review, Title
-
-
-class CategorySerializer(serializers.ModelSerializer):
-    """Sеrializer для модели Category."""
-
-    class Meta:
-        model = Category
-        fields = ('name', 'slug')
-
-
-class GenreSerializer(serializers.ModelSerializer):
-    """Sеrializer для модели Genre."""
-
-    class Meta:
-        model = Genre
-        fields = ('name', 'slug')
-
-
-class TitleReadSerializer(serializers.ModelSerializer):
-    """
-    Serializer для чтения Title.
-
-    Возвращает вложенные жанры и категорию.
-    """
-
-    genre = GenreSerializer(many=True, read_only=True)
-    category = CategorySerializer(read_only=True)
-
-    class Meta:
-        model = Title
-        fields = '__all__'
-
-
-class TitleWriteSerializer(
-    TitleGenreSerializer,
-    YearValidationMixin,
-    serializers.ModelSerializer
-):
-    """
-    Serializer для создания и обновления Title.
-
-    Использует SlugRelatedField для вложенных жанров и категории.
-    """
-
-    genre = serializers.SlugRelatedField(
-        many=True,
-        slug_field='slug',
-        queryset=Genre.objects.all()
-    )
-    category = serializers.SlugRelatedField(
-        slug_field='slug',
-        queryset=Category.objects.all()
-    )
-
-    class Meta:
-        model = Title
-        fields = '__all__'
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -87,12 +32,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'pub_date',)
 
     def validate(self, data):
-        """
-        Проверяет, что пользователь не оставляет более одного отзыва.
-
-        Если запрос POST, возвращает data.
-        Если отзыв уже существует, возвращает ошибку.
-        """
+        """Проверяет, чтобы был единственный отзыв."""
         if self.context['request'].method != 'POST':
             return data
 
@@ -105,11 +45,95 @@ class ReviewSerializer(serializers.ModelSerializer):
         return data
 
     def validate_score(self, data):
-        """
-        Проверяет , что score в диапазоне от 1 до 10 вкл.
-
-        Если значение выходит за диапазон, возвращает ошибку.
-        """
+        """Проверяет корректность введенной оценки."""
         if not 1 <= data <= 10:
             raise serializers.ValidationError('Оценка должна быть от 1 до 10')
         return data
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    """Сериализатор для модели категории."""
+
+    class Meta:
+        model = Category
+        fields = ('name', 'slug')
+
+
+class GenreSerializer(serializers.ModelSerializer):
+    """Сериализатор для модели жанра."""
+
+    class Meta:
+        model = Genre
+        fields = ('name', 'slug')
+
+
+class TitleReadSerializer(serializers.ModelSerializer):
+    """Сериализатор для чтения модели произведений."""
+
+    genre = GenreSerializer(many=True, read_only=True)
+    category = CategorySerializer(read_only=True)
+    rating = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Title
+        fields = ('id', 'name', 'year', 'rating', 'description',
+                  'genre', 'category',)
+        read_only_fields = fields
+
+    def get_rating(self, obj):
+        """Вычисляет средний рейтинг на основе отзывов."""
+        return obj.reviews.aggregate(Avg('score'))['score__avg']
+
+
+class TitleWriteSerializer(serializers.ModelSerializer):
+    """Сериализатор для для создания и обновления модели произведений."""
+
+    genre = serializers.SlugRelatedField(
+        many=True,
+        slug_field='slug',
+        required=False,
+        queryset=Genre.objects.all()
+    )
+    category = serializers.SlugRelatedField(
+        slug_field='slug',
+        required=False,
+        queryset=Category.objects.all()
+    )
+
+    class Meta:
+        model = Title
+        fields = '__all__'
+
+    def validate_genre(self, data):
+        """Проверяет корректность введенного жанра."""
+        if 'genre' in data and len(data['genre']) == 0:
+            raise serializers.ValidationError({
+                'genre': 'Если указан жанр, должен быть хотя бы один'
+            })
+        return data
+
+    def validate_year(self, value):
+        """Проверяет, что год выпуска не превышает текущий."""
+        current_year = datetime.now().year
+        if value > current_year:
+            raise serializers.ValidationError(
+                'Год выпуска не может быть больше текущего'
+            )
+        return value
+
+    def create(self, validated_data):
+        """Создает новое произведение."""
+        genres = validated_data.pop('genre')
+        title = Title.objects.create(**validated_data)
+        title.genre.set(genres)
+        return title
+
+    def update(self, instance, validated_data):
+        """Обновляет произведение."""
+        genres = validated_data.pop('genre', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if genres is not None:
+            instance.genre.set(genres)
+        return instance
