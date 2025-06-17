@@ -1,8 +1,9 @@
+import uuid
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.mail import send_mail
 from django.conf import settings
-import uuid
 
 
 class User(AbstractUser):
