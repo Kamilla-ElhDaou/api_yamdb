@@ -91,14 +91,15 @@ class TitleWriteSerializer(serializers.ModelSerializer):
     genre = serializers.SlugRelatedField(
         many=True,
         slug_field='slug',
-        required=False,
+        required=True,
         queryset=Genre.objects.all()
     )
     category = serializers.SlugRelatedField(
         slug_field='slug',
-        required=False,
+        required=True,
         queryset=Category.objects.all()
     )
+    rating = serializers.SerializerMethodField()
 
     class Meta:
         model = Title
@@ -106,9 +107,17 @@ class TitleWriteSerializer(serializers.ModelSerializer):
 
     def validate_genre(self, data):
         """Проверяет корректность введенного жанра."""
-        if 'genre' in data and len(data['genre']) == 0:
+        if not data:
             raise serializers.ValidationError({
-                'genre': 'Если указан жанр, должен быть хотя бы один'
+                'genre': 'Жанр необходимо указать'
+            })
+        return data
+
+    def validate_category(self, data):
+        """Проверяет корректность введенной категории."""
+        if not data:
+            raise serializers.ValidationError({
+                'category': 'Категорию необходимо указать'
             })
         return data
 
@@ -137,3 +146,7 @@ class TitleWriteSerializer(serializers.ModelSerializer):
         if genres is not None:
             instance.genre.set(genres)
         return instance
+
+    def to_representation(self, instance):
+        """Переключение на сериализатор для чтения для ответа."""
+        return TitleReadSerializer(instance).data

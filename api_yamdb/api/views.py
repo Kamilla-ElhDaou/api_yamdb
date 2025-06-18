@@ -1,4 +1,3 @@
-import django_filters
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, mixins, viewsets
@@ -91,15 +90,16 @@ class GenreViewSet(CategoryGenreBaseViewSet):
 class TitleViewSet(NoPutRequestMixin, viewsets.ModelViewSet):
     """Вьюсет для работы с произведениями."""
 
-    queryset = Title.objects.all()
-    filter_backends = [
+    queryset = Title.objects.select_related(
+        'category').prefetch_related('genre')
+    filter_backends = (
         DjangoFilterBackend,
         filters.OrderingFilter,
-        filters.SearchFilter
-    ]
+        filters.SearchFilter,
+    )
     filterset_class = TitleFilter
-    ordering_fields = ['name', 'year']
-    search_fields = ['name', 'genre__name']
+    ordering_fields = ('name', 'year',)
+    search_fields = ('name', 'genre__name',)
     pagination_class = LimitOffsetPagination
     permission_classes = (IsAdminOrReadOnly,)
 

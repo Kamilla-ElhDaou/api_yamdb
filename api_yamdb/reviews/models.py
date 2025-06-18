@@ -79,7 +79,7 @@ class Title(models.Model):
 
     name = models.CharField(max_length=256, verbose_name='Название',)
     year = models.PositiveIntegerField(verbose_name='Год выпуска',)
-    description = models.TextField(verbose_name='Описание',)
+    description = models.TextField(verbose_name='Описание', blank=True,)
     genre = models.ManyToManyField(Genre,
                                    verbose_name='Жанр',
                                    blank=True,)
@@ -93,6 +93,9 @@ class Title(models.Model):
         verbose_name = 'произведение'
         verbose_name_plural = 'Произведения'
         default_related_name = 'titles'
+        indexes = [
+            models.Index(fields=['category']),
+        ]
 
     def __str__(self):
         return self.name
@@ -135,6 +138,9 @@ class Review(models.Model):
         ]
         ordering = ['-pub_date']
         default_related_name = 'reviews'
+        indexes = [
+            models.Index(fields=['title', 'author']),
+        ]
 
     def __str__(self):
         return f'Отзыв {self.author} на {self.title}'
@@ -167,6 +173,9 @@ class Comment(models.Model):
         verbose_name_plural = 'Комментарии'
         ordering = ['-pub_date']
         default_related_name = 'comments'
+        indexes = [
+            models.Index(fields=['review', 'author']),
+        ]
 
     def __str__(self):
         return f'Комментарий {self.author} к отзыву {self.review.id}'
