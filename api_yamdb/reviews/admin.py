@@ -35,6 +35,16 @@ class TitleAdmin(admin.ModelAdmin):
     list_filter = ('year', 'category', 'genre')
     filter_horizontal = ('genre',)
     list_select_related = ('category',)
+    list_editable = ('category',)
+
+    def display_genres(self, obj):
+        """Отображает жанры через запятую."""
+        return ", ".join([genre.name for genre in obj.genre.all()])
+
+    def get_queryset(self, request):
+        """Оптимизация запроса с предзагрузкой жанров."""
+        queryset = super().get_queryset(request)
+        return queryset.prefetch_related('genre')
 
 
 @admin.register(Comment)

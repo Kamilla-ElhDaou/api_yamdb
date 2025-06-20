@@ -1,1 +1,0 @@
-CHAR_LIMIT = 50
