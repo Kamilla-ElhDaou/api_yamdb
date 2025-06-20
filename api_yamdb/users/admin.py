@@ -6,7 +6,7 @@ from users.models import User
 
 
 @admin.register(User)
-class CustomUserAdmin(UserAdmin):
+class ExtendedUserAdmin(UserAdmin):
     """Административный интерфейс для кастомной модели пользователя."""
 
     list_display = (

@@ -1,15 +1,38 @@
+from datetime import datetime
+
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.text import slugify
 
-from reviews.constants import CHAR_LIMIT
+from constants import CHAR_LIMIT, MAX_NAME_LENGTH, MAX_SCORE, MIN_SCORE
 
 
 User = get_user_model()
 
 
-class Category(models.Model):
+class CategoryGenreBaseModel(models.Model):
+    """Базовая модель для категории и жанров."""
+
+    name = models.CharField(max_length=MAX_NAME_LENGTH,
+                            verbose_name='Название',)
+    slug = models.SlugField(unique=True,
+                            verbose_name='Идентификатор',)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)[:CHAR_LIMIT]
+        super().save(*args, **kwargs)
+
+    class Meta:
+        abstract = True
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class Category(CategoryGenreBaseModel):
     """
     Модель для категории произведений.
 
@@ -18,26 +41,12 @@ class Category(models.Model):
         slug (SlugField): Уникальный идентификатор для URL.
     """
 
-    name = models.CharField(max_length=256, verbose_name='Название')
-    slug = models.SlugField(max_length=50,
-                            unique=True,
-                            verbose_name='Идентификатор',)
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)[:CHAR_LIMIT]
-        super().save(*args, **kwargs)
-
     class Meta:
         verbose_name = 'категория'
         verbose_name_plural = 'Категории'
-        ordering = ['name']
-
-    def __str__(self):
-        return self.name
 
 
-class Genre(models.Model):
+class Genre(CategoryGenreBaseModel):
     """
     Модель для жанра произведений.
 
@@ -46,23 +55,9 @@ class Genre(models.Model):
         slug (SlugField): Уникальный идентификатор для URL.
     """
 
-    name = models.CharField(max_length=256, verbose_name='Название')
-    slug = models.SlugField(max_length=50,
-                            unique=True,
-                            verbose_name='Идентификатор',)
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)[:CHAR_LIMIT]
-        super().save(*args, **kwargs)
-
     class Meta:
         verbose_name = 'жанр'
         verbose_name_plural = 'Жанры'
-        ordering = ['name']
-
-    def __str__(self):
-        return self.name
 
 
 class Title(models.Model):
@@ -77,8 +72,12 @@ class Title(models.Model):
         category (ForeignKey): Категория.
     """
 
-    name = models.CharField(max_length=256, verbose_name='Название',)
-    year = models.PositiveIntegerField(verbose_name='Год выпуска',)
+    name = models.CharField(max_length=MAX_NAME_LENGTH,
+                            verbose_name='Название',)
+    year = models.PositiveSmallIntegerField(
+        verbose_name='Год выпуска',
+        validators=[MaxValueValidator(datetime.now().year)],
+    )
     description = models.TextField(verbose_name='Описание', blank=True,)
     genre = models.ManyToManyField(Genre,
                                    verbose_name='Жанр',
@@ -93,6 +92,7 @@ class Title(models.Model):
         verbose_name = 'произведение'
         verbose_name_plural = 'Произведения'
         default_related_name = 'titles'
+        ordering = ['name']
         indexes = [
             models.Index(fields=['category']),
         ]
@@ -101,31 +101,50 @@ class Title(models.Model):
         return self.name
 
 
-class Review(models.Model):
+class ReviewCommentBaseModel(models.Model):
+    """
+    Базовая модель для отзывов и комментариев.
+
+    Атрибуты:
+        author (ForeignKey): Автор.
+        text (TextField): Текст.
+        pub_date (DateTimeField): Дата добавления.
+    """
+
+    author = models.ForeignKey(User,
+                               verbose_name='Автор',
+                               on_delete=models.CASCADE,)
+    text = models.TextField(verbose_name='Текст')
+    pub_date = models.DateTimeField(verbose_name='Дата добавления',
+                                    auto_now_add=True,
+                                    db_index=True,)
+
+    class Meta:
+        abstract = True
+        ordering = ['-pub_date']
+
+
+class Review(ReviewCommentBaseModel):
     """
     Модель для отзыва на произведение.
 
     Атрибуты:
         title (ForeignKey): Произведение.
-        author (ForeignKey): Автор отзыва.
-        text (TextField): Текст отзыва.
         score (PositiveIntegerField): Оценка.
-        pub_date (DateTimeField): Дата добавления.
+
+        Поля унаследованы от ReviewCommentBaseModel:
+            author, text, pub_date
     """
 
     title = models.ForeignKey(Title,
                               verbose_name='Произведение',
                               on_delete=models.CASCADE)
-    author = models.ForeignKey(User,
-                               verbose_name='Автор отзыва',
-                               on_delete=models.CASCADE,)
-    text = models.TextField(verbose_name='Текст отзыва')
-    score = models.PositiveIntegerField(verbose_name='Оценка',
-                                        validators=[MinValueValidator(1),
-                                                    MaxValueValidator(10)])
-    pub_date = models.DateTimeField(verbose_name='Дата добавления',
-                                    auto_now_add=True,
-                                    db_index=True,)
+    score = models.PositiveSmallIntegerField(
+        verbose_name='Оценка',
+        validators=[
+            MinValueValidator(MIN_SCORE), MaxValueValidator(MAX_SCORE)
+        ],
+    )
 
     class Meta:
         verbose_name = 'отзыв'
@@ -136,7 +155,6 @@ class Review(models.Model):
                 name='unique_review'
             )
         ]
-        ordering = ['-pub_date']
         default_related_name = 'reviews'
         indexes = [
             models.Index(fields=['title', 'author']),
@@ -146,32 +164,24 @@ class Review(models.Model):
         return f'Отзыв {self.author} на {self.title}'
 
 
-class Comment(models.Model):
+class Comment(ReviewCommentBaseModel):
     """
     Модель для комментария к отзыву.
 
     Атрибуты:
         review (ForeignKey): Отзыв.
-        author (ForeignKey): Автор комментария.
-        text (TextField): Текст комментария.
-        pub_date (DateTimeField): Дата добавления.
+
+        Поля унаследованы от ReviewCommentBaseModel:
+            author, text, pub_date
     """
 
     review = models.ForeignKey(Review,
                                verbose_name='Отзыв',
-                               on_delete=models.CASCADE)
-    author = models.ForeignKey(User,
-                               verbose_name='Автор комментария',
                                on_delete=models.CASCADE,)
-    text = models.TextField(verbose_name='Текст комментария')
-    pub_date = models.DateTimeField(verbose_name='Дата добавления',
-                                    auto_now_add=True,
-                                    db_index=True,)
 
     class Meta:
         verbose_name = 'комментарий'
         verbose_name_plural = 'Комментарии'
-        ordering = ['-pub_date']
         default_related_name = 'comments'
         indexes = [
             models.Index(fields=['review', 'author']),

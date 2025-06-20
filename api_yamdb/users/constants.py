@@ -1,1 +1,0 @@
-FORBIDDEN_NAMES = ('me',)

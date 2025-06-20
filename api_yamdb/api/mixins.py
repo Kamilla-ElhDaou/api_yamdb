@@ -1,38 +1,14 @@
-import django_filters
-from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import serializers
 
-from reviews.models import Title
+from constants import FORBIDDEN_NAMES
 
 
-class NoPutRequestMixin:
-    """Миксин для ограничения PUT-запросов."""
+class UsernameValidationMixin:
+    """Проверяет, что имя пользователя не запрещенно."""
 
-    def update(self, request, *args, **kwargs):
-        if request.method == 'PUT':
-            return Response(
-                {'detail': ' PUT-запрос не предусмотрен.'},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
+    def validate_username(self, data):
+        if data in FORBIDDEN_NAMES:
+            raise serializers.ValidationError(
+                f'Имя пользователя не может быть {data}'
             )
-        return super().update(request, *args, **kwargs)
-
-
-class TitleFilter(django_filters.FilterSet):
-    """Система фильтрации для модели Title"""
-
-    name = django_filters.CharFilter(
-        field_name='name',
-        lookup_expr='icontains'
-    )
-    category = django_filters.CharFilter(
-        field_name='category__slug',
-        lookup_expr='exact'
-    )
-    genre = django_filters.CharFilter(
-        field_name='genre__slug',
-        lookup_expr='exact'
-    )
-
-    class Meta:
-        model = Title
-        fields = ['name', 'year', 'genre', 'category']
+        return data

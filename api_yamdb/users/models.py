@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.db import models
 
@@ -33,7 +34,7 @@ class User(AbstractUser):
         ADMIN = 'admin', 'Администратор'
 
     role = models.CharField(
-        max_length=20,
+        max_length=max(len(role) for role in Role.values),
         choices=Role.choices,
         default=Role.USER,
         verbose_name='Роль',
@@ -43,11 +44,14 @@ class User(AbstractUser):
         unique=True,
         verbose_name='Электронная почта',
     )
-    confirmation_code = models.CharField(
-        max_length=100,
-        blank=True,
-        verbose_name='Код подтверждения',
-    )
+
+    class Meta:
+        verbose_name = 'пользователь'
+        verbose_name_plural = 'Пользователи'
+        ordering = ['username']
+
+    def __str__(self):
+        return self.username
 
     @property
     def is_admin(self):
@@ -65,7 +69,8 @@ class User(AbstractUser):
         на email пользователя.
         """
         subject = 'Код подтверждения для YaMDb'
-        message = f'Ваш код подтверждения: {self.confirmation_code}'
+        confirmation_code = default_token_generator.make_token(self)
+        message = f'Ваш код подтверждения: {confirmation_code}'
         send_mail(
             subject,
             message,
@@ -73,10 +78,3 @@ class User(AbstractUser):
             [self.email],
             fail_silently=False
         )
-
-    class Meta:
-        verbose_name = 'пользователь'
-        verbose_name_plural = 'Пользователи'
-
-    def __str__(self):
-        return self.username
