@@ -156,8 +156,6 @@ class AuthViewSet(viewsets.ViewSet):
         serializer.is_valid(raise_exception=True)
 
         user = serializer.validated_data['user']
-        user.is_active = True
-        user.save()
 
         token = AccessToken.for_user(user)
         return Response({'token': str(token)}, status=status.HTTP_200_OK)

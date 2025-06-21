@@ -1,8 +1,18 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import models
+
+from constants import FORBIDDEN_NAMES, MAX_USERNAME_LENGTH
+
+
+def validate_username(data):
+    if data in FORBIDDEN_NAMES:
+        raise ValidationError(
+            f'Имя пользователя не может быть {data}'
+        )
 
 
 class User(AbstractUser):
@@ -33,6 +43,12 @@ class User(AbstractUser):
         MODERATOR = 'moderator', 'Модератор'
         ADMIN = 'admin', 'Администратор'
 
+    username = models.CharField(
+        max_length=MAX_USERNAME_LENGTH,
+        unique=True,
+        validators=[AbstractUser.username_validator, validate_username],
+        verbose_name='Имя пользователя',
+    )
     role = models.CharField(
         max_length=max(len(role) for role in Role.values),
         choices=Role.choices,

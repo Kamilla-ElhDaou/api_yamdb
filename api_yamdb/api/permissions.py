@@ -28,7 +28,7 @@ class IsAdminOrReadOnly(BasePermission):
         return (
             request.method in SAFE_METHODS
             or request.user.is_authenticated
-            and (request.user.is_admin or request.user.is_superuser)
+            and request.user.is_admin
         )
 
 

@@ -30,13 +30,15 @@ class GenreAdmin(admin.ModelAdmin):
 class TitleAdmin(admin.ModelAdmin):
     """Административный интерфейс для модели произведений."""
 
-    list_display = ('name', 'year', 'description', 'category')
+    list_display = ('name', 'year', 'description',
+                    'category', 'display_genres')
     search_fields = ('name', 'year', 'category__name')
     list_filter = ('year', 'category', 'genre')
     filter_horizontal = ('genre',)
     list_select_related = ('category',)
     list_editable = ('category',)
 
+    @admin.display(description='Жанры')
     def display_genres(self, obj):
         """Отображает жанры через запятую."""
         return ", ".join([genre.name for genre in obj.genre.all()])
