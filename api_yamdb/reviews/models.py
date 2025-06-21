@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.text import slugify
@@ -19,17 +20,17 @@ class CategoryGenreBaseModel(models.Model):
     slug = models.SlugField(unique=True,
                             verbose_name='Идентификатор',)
 
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)[:CHAR_LIMIT]
-        super().save(*args, **kwargs)
-
     class Meta:
         abstract = True
         ordering = ['name']
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)[:CHAR_LIMIT]
+        super().save(*args, **kwargs)
 
 
 class Category(CategoryGenreBaseModel):
@@ -41,7 +42,7 @@ class Category(CategoryGenreBaseModel):
         slug (SlugField): Уникальный идентификатор для URL.
     """
 
-    class Meta:
+    class Meta(CategoryGenreBaseModel.Meta):
         verbose_name = 'категория'
         verbose_name_plural = 'Категории'
 
@@ -55,9 +56,17 @@ class Genre(CategoryGenreBaseModel):
         slug (SlugField): Уникальный идентификатор для URL.
     """
 
-    class Meta:
+    class Meta(CategoryGenreBaseModel.Meta):
         verbose_name = 'жанр'
         verbose_name_plural = 'Жанры'
+
+
+def validate_current_year(data):
+    current_year = datetime.now().year
+    if data > current_year:
+        raise ValidationError(
+            f'Год не может быть больше текущего ({current_year})'
+        )
 
 
 class Title(models.Model):
@@ -74,9 +83,9 @@ class Title(models.Model):
 
     name = models.CharField(max_length=MAX_NAME_LENGTH,
                             verbose_name='Название',)
-    year = models.PositiveSmallIntegerField(
+    year = models.SmallIntegerField(
         verbose_name='Год выпуска',
-        validators=[MaxValueValidator(datetime.now().year)],
+        validators=[validate_current_year],
     )
     description = models.TextField(verbose_name='Описание', blank=True,)
     genre = models.ManyToManyField(Genre,
@@ -146,7 +155,7 @@ class Review(ReviewCommentBaseModel):
         ],
     )
 
-    class Meta:
+    class Meta(ReviewCommentBaseModel.Meta):
         verbose_name = 'отзыв'
         verbose_name_plural = 'Отзывы'
         constraints = [
@@ -179,7 +188,7 @@ class Comment(ReviewCommentBaseModel):
                                verbose_name='Отзыв',
                                on_delete=models.CASCADE,)
 
-    class Meta:
+    class Meta(ReviewCommentBaseModel.Meta):
         verbose_name = 'комментарий'
         verbose_name_plural = 'Комментарии'
         default_related_name = 'comments'

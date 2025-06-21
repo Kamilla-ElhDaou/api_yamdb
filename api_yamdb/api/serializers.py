@@ -3,9 +3,9 @@ from django.contrib.auth.tokens import default_token_generator
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
-from constants import (MAX_EMAIL_LENGTH, MAX_FIRST_NAME_LENGTH,
-                       MAX_LAST_NAME_LENGTH, MAX_USERNAME_LENGTH,)
 from api.mixins import UsernameValidationMixin
+from constants import (MAX_EMAIL_LENGTH, MAX_FIRST_NAME_LENGTH,
+                       MAX_LAST_NAME_LENGTH, MAX_USERNAME_LENGTH)
 from reviews.models import Category, Comment, Genre, Review, Title
 
 
@@ -70,7 +70,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
     genre = GenreSerializer(many=True, read_only=True)
     category = CategorySerializer(read_only=True)
-    rating = serializers.IntegerField(read_only=True, allow_null=True,)
+    rating = serializers.IntegerField(read_only=True, default=0,)
 
     class Meta:
         model = Title
@@ -206,14 +206,9 @@ class SignUpSerializer(UsernameValidationMixin, serializers.Serializer):
 
     def create(self, validated_data):
         """Создает пользователя или возвращает существующего."""
-        user, created = User.objects.get_or_create(
+        user, _ = User.objects.get_or_create(
             username=validated_data['username'],
             email=validated_data['email'],
-            defaults={
-                'is_active': False
-            }
         )
 
-        if not created:
-            user.save()
         return user

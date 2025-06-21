@@ -22,47 +22,21 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Основной метод обработки команды."""
-        loaders = (
-            {
-                'filename': 'users.csv',
-                'model': User,
-                'func': self.load_data,
-            },
-            {
-                'filename': 'category.csv',
-                'model': Category,
-                'func': self.load_data,
-            },
-            {
-                'filename': 'genre.csv',
-                'model': Genre,
-                'func': self.load_data,
-            },
-            {
-                'filename': 'titles.csv',
-                'func': self.load_titles,
-            },
-            {
-                'filename': 'genre_title.csv',
-                'func': self.load_genre_title,
-            },
-            {
-                'filename': 'review.csv',
-                'model': Review,
-                'func': self.load_reviews_comments,
-            },
-            {
-                'filename': 'comments.csv',
-                'model': Comment,
-                'func': self.load_reviews_comments,
-            },
-        )
+        loaders = {
+            'users.csv': (User, self.load_data),
+            'category.csv': (Category, self.load_data),
+            'genre.csv': (Genre, self.load_data),
+            'titles.csv': (None, self.load_titles),
+            'genre_title.csv': (None, self.load_genre_title),
+            'review.csv': (Review, self.load_reviews_comments),
+            'comments.csv': (Comment, self.load_reviews_comments),
+        }
 
-        for loader in loaders:
-            if 'model' in loader:
-                loader['func'](loader['filename'], loader['model'])
+        for filename, (model, func) in loaders.items():
+            if model:
+                func(filename, model)
             else:
-                loader['func'](loader['filename'])
+                func(filename)
 
         self.stdout.write(self.style.SUCCESS('Данные успешно загружены!'))
 
